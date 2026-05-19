@@ -1112,6 +1112,10 @@ function matchesCountryOption(text, desiredValue) {
 }
 
 function findCountryDropdown() {
+  const direct = document.getElementById('billingCountry');
+  if (direct && isVisibleElement(direct) && isEnabledControl(direct)) {
+    return direct;
+  }
   const controls = getVisibleControls('select, button, [role="button"], [role="combobox"], [aria-haspopup="listbox"]');
   return controls.find((control) => {
     if (!isEnabledControl(control) || isDocumentLevelContainer(control)) return false;
@@ -1150,6 +1154,10 @@ function matchesRegionOption(text, desiredValue) {
 }
 
 function findRegionDropdown() {
+  const direct = document.getElementById('billingAdministrativeArea');
+  if (direct && isVisibleElement(direct) && isEnabledControl(direct)) {
+    return direct;
+  }
   const controls = getVisibleControls('select, button, [role="button"], [role="combobox"], [aria-haspopup="listbox"]');
   return controls.find((control) => {
     if (!isEnabledControl(control) || isDocumentLevelContainer(control)) return false;
@@ -1301,15 +1309,19 @@ async function ensureCountrySelectionBeforeAutocomplete(seed = {}) {
 }
 
 function getStructuredAddressFields() {
-  const address1 = findInputByFieldText([
+  const directAddress1 = document.getElementById('billingAddressLine1');
+  const directCity = document.getElementById('billingLocality');
+  const directPostalCode = document.getElementById('billingPostalCode');
+  const directAddress2 = document.getElementById('billingAddressLine2');
+  const address1 = (directAddress1 && isVisibleElement(directAddress1) ? directAddress1 : null) || findInputByFieldText([
     /address\s*(?:line)?\s*1|address[_-]?line[_-]?1|address\[(?:address_)?line1\]|line\s*1|street|street[_-]?address/i,
     /地址\s*1|街道|详细地址|住所/i,
   ]);
-  const address2 = findInputByFieldText([
+  const address2 = (directAddress2 && isVisibleElement(directAddress2) ? directAddress2 : null) || findInputByFieldText([
     /address\s*(?:line)?\s*2|address[_-]?line[_-]?2|address\[(?:address_)?line2\]|line\s*2|apt|suite|unit/i,
     /地址\s*2|公寓|单元|门牌/i,
   ]);
-  const city = findInputByFieldText([
+  const city = (directCity && isVisibleElement(directCity) ? directCity : null) || findInputByFieldText([
     /city|town|suburb|locality|address[_-]?level[_-]?2|address\[city\]/i,
     /城市|市区|区市町村|市区町村|市町村/i,
   ]);
@@ -1317,7 +1329,7 @@ function getStructuredAddressFields() {
     /state|province|region|county|prefecture|administrative|administrative[_-]?area|address[_-]?level[_-]?1|address\[state\]/i,
     /省|州|地区|辖区|都道府县|都道府県/i,
   ]);
-  const postalCode = findInputByFieldText([
+  const postalCode = (directPostalCode && isVisibleElement(directPostalCode) ? directPostalCode : null) || findInputByFieldText([
     /postal|zip|postcode|postal[_-]?code|zip[_-]?code|address\[postal_code\]/i,
     /邮编|邮政|郵便番号/i,
   ]);
@@ -1345,6 +1357,7 @@ function isDropdownStructuredAddressForm(fields = getStructuredAddressFields()) 
 async function ensureStructuredAddress(seed, options = {}) {
   const fallback = seed?.fallback || {};
   const overwrite = Boolean(options.overwrite);
+  const timeoutMs = Math.max(1000, Math.floor(Number(options.timeoutMs) || 6000));
   const countryDropdown = findCountryDropdown();
   if (countryDropdown && seed?.countryCode) {
     await selectCountryDropdown(countryDropdown, seed.countryCode);
@@ -1358,7 +1371,7 @@ async function ensureStructuredAddress(seed, options = {}) {
   }, {
     label: '结构化账单地址字段',
     intervalMs: 250,
-    timeoutMs: 6000,
+    timeoutMs,
   });
 
   fillIfEmpty(fields.address1, fallback.address1, { overwrite });
@@ -1626,6 +1639,7 @@ async function fillPlusBillingAddress(payload = {}) {
     }
     return ensureStructuredAddress(seed, {
       overwrite: useDirectStructuredBranch,
+      timeoutMs: payload.structuredAddressTimeoutMs,
     });
   });
   const agreementResult = await ensureAgreementCheckbox({
@@ -1670,6 +1684,7 @@ async function ensurePlusStructuredBillingAddress(payload = {}) {
   const structuredAddress = await performOperationWithDelay({ stepKey: 'plus-checkout-billing', kind: 'fill', label: 'fill-billing-address' }, async () => (
     ensureStructuredAddress(payload.addressSeed || {}, {
       overwrite: Boolean(payload.overwriteStructuredAddress),
+      timeoutMs: payload.structuredAddressTimeoutMs,
     })
   ));
   const agreementResult = await ensureAgreementCheckbox({

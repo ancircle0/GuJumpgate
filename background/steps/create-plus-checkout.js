@@ -379,6 +379,7 @@
           paymentMethod: PLUS_PAYMENT_METHOD_PAYPAL,
           fullName: guestProfile.fullName,
           addressSeed: buildHostedCheckoutAddressSeed(guestProfile.address),
+          structuredAddressTimeoutMs: 12000,
         },
       });
       if (result?.error) {
