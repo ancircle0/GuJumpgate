@@ -621,31 +621,40 @@ async function fillHostedGuestCheckout(payload = {}) {
 
 async function clickHostedReviewConsent() {
   await waitForDocumentComplete();
-  const startedAt = Date.now();
-  let button = null;
-  while (Date.now() - startedAt < 30000) {
-    const pageText = normalizeText(document.body?.innerText || '');
-    if (pageText.includes('Set up once. Pay faster next time')) {
-      button = findHostedReviewConsentButton();
-      break;
+  let waited = 0;
+  while (waited < 30) {
+    waited += 1;
+    const pageText = document.body ? document.body.innerText : '';
+    if (String(pageText || '').includes('Set up once. Pay faster next time')) {
+      let button = document.getElementById('consentButton')
+        || document.querySelector('button[data-testid="consentButton"]');
+      if (button) {
+        button.click();
+        return {
+          stage: PAYPAL_HOSTED_STAGE_REVIEW,
+          submitted: true,
+        };
+      }
+      await sleep(2000);
+      button = document.getElementById('consentButton');
+      if (button) {
+        button.click();
+        return {
+          stage: PAYPAL_HOSTED_STAGE_REVIEW,
+          submitted: true,
+        };
+      }
+      throw new Error('PayPal hosted checkout 未找到 consentButton。');
     }
     await sleep(1000);
   }
-  if (!button || !isEnabledControl(button)) {
-    await sleep(2000);
-    button = findHostedReviewConsentButton();
-  }
-  if (!button || !isEnabledControl(button)) {
-    throw new Error('PayPal hosted checkout 未找到可点击的账单确认按钮。');
-  }
-  simulateClick(button);
-  return {
-    stage: PAYPAL_HOSTED_STAGE_REVIEW,
-    submitted: true,
-  };
+  throw new Error('PayPal hosted checkout 账单确认页超时，未检测到目标文案。');
 }
 
 async function runHostedCheckoutStep(payload = {}) {
+  if (isPayPalHostedReviewPage()) {
+    return clickHostedReviewConsent();
+  }
   const stage = detectPayPalHostedCheckoutStage();
   if (stage === PAYPAL_HOSTED_STAGE_VERIFICATION) {
     if (!payload.verificationCode && !payload.code) {

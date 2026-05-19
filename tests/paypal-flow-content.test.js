@@ -288,6 +288,35 @@ return { fillHostedVerificationCode };
   );
 }
 
+function createHostedReviewApi(overrides = {}) {
+  const bindings = {
+    PAYPAL_HOSTED_STAGE_REVIEW: 'review_consent',
+    waitForDocumentComplete: async () => {},
+    isPayPalHostedReviewPage: () => true,
+    detectPayPalHostedCheckoutStage: () => 'unknown',
+    clickHostedReviewConsent: async () => ({ stage: 'review_consent', submitted: true }),
+    ...overrides,
+  };
+
+  return new Function(
+    'PAYPAL_HOSTED_STAGE_REVIEW',
+    'waitForDocumentComplete',
+    'isPayPalHostedReviewPage',
+    'detectPayPalHostedCheckoutStage',
+    'clickHostedReviewConsent',
+    `
+${extractFunction('runHostedCheckoutStep')}
+return { runHostedCheckoutStep };
+`
+  )(
+    bindings.PAYPAL_HOSTED_STAGE_REVIEW,
+    bindings.waitForDocumentComplete,
+    bindings.isPayPalHostedReviewPage,
+    bindings.detectPayPalHostedCheckoutStage,
+    bindings.clickHostedReviewConsent
+  );
+}
+
 test('PayPal email page ignores hidden pre-rendered password input', () => {
   const hiddenPanel = createElement({ attrs: { 'aria-hidden': 'true' } });
   const emailInput = createElement({
@@ -472,4 +501,24 @@ test('PayPal hosted checkout verification filler writes six digits into split in
     stage: 'verification',
     codeSubmitted: true,
   });
+});
+
+test('PayPal hosted review path bypasses generic stage detection and directly runs review handler', async () => {
+  const calls = [];
+  const api = createHostedReviewApi({
+    isPayPalHostedReviewPage: () => true,
+    detectPayPalHostedCheckoutStage: () => {
+      calls.push('detect');
+      return 'guest_checkout';
+    },
+    clickHostedReviewConsent: async () => {
+      calls.push('review');
+      return { stage: 'review_consent', submitted: true };
+    },
+  });
+
+  const result = await api.runHostedCheckoutStep({});
+
+  assert.deepEqual(calls, ['review']);
+  assert.deepEqual(result, { stage: 'review_consent', submitted: true });
 });
