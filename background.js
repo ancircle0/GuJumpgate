@@ -891,7 +891,7 @@ const PERSISTED_SETTING_DEFAULTS = {
   plusModeEnabled: false,
   plusPaymentMethod: DEFAULT_PLUS_PAYMENT_METHOD,
   plusHostedCheckoutOauthDelaySeconds: 0,
-  hostedCheckoutVerificationUrl: 'https://mail-api.yuecheng.shop/api/text-relay/eca_tr_OvAY5TRAW8mdN2is0ApJ1Tg7',
+  hostedCheckoutVerificationUrl: 'https://mail.test.com/api/text-relay/eca_tr_xxxxxxxxx',
   hostedCheckoutPhoneNumber: '1234567890',
   paypalEmail: '',
   paypalPassword: '',
